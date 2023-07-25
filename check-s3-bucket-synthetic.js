@@ -1,6 +1,6 @@
-var assert = require("assert")
+const assert = require("assert")
 // Load the AWS SDK for Node.js
-var AWS = require('aws-sdk');
+const AWS = require('aws-sdk');
 // Set thresholds and other variables
 const config = {
     minFileSize:5000
@@ -18,7 +18,7 @@ const bucketDetails = {
    };
 
 // Create S3 service object
-var s3 = new AWS.S3(
+const s3 = new AWS.S3(
   {
     apiVersion: '2006-03-01',
     region: 'eu-west-2',
@@ -29,36 +29,18 @@ var s3 = new AWS.S3(
 
 //Gets all the objects in the specified bucket
 async function getObjectDetails(bucketName, fileName) {
-  let object;
+  const response = await s3.listObjects( { Bucket: bucketName } ).promise().catch(error => {
+    assert.fail(`Unable to list the objects from the bucket "${bucketName}": ${error.message}`);
+  });
 
-  try {
-    const params = {
-      Bucket: bucketName
-    };
-
-    const response = await s3.listObjects(params).promise();
-
-    if (response.Contents.length > 0) {
-      object = response.Contents.find(item => item.Key === fileName);
-
-      if (!object) {
-        throw new Error(`No object with key "${fileName}" found in the bucket`);
-      }
-    } else {
-      throw new Error('No objects found in the bucket');
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    throw error;
-  }
-
+  assert.ok(response.Contents.length > 0, 'No objects found in the bucket');
+  const object = response.Contents.find(item => item.Key === fileName);
+  assert.ok(object, `No object with key "${fileName}" found in the bucket`);
   return object; 
 }
 
-  //Do the work and compare the sizes
-  (async () => {
-      const object = await getObjectDetails(bucketDetails.Bucket, bucketDetails.File);
-      console.log(object);
-        // Assertion
-            assert.ok(object.Size > config.minFileSize, 'Object size is less than config.minfilesize')
-  })();
+//Do the work and compare the sizes
+const object = await getObjectDetails(bucketDetails.Bucket, bucketDetails.File);
+console.log(object);
+// Assertion
+assert.ok(object.Size > config.minFileSize, 'Object size is less than config.minfilesize');
